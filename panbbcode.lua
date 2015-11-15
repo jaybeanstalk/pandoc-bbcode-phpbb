@@ -13,15 +13,6 @@ local function enclose(t, s, p)
   end
 end
 
-local function lookup(t, e)
-  for _,v in ipairs(t) do
-    if v == e then
-        return true
-    end
-  end
-  return false
-end
-
 local strlen_ger_utf8_t = { [0xc3] = { 0xa4, 0x84, 0xbc, 0x9c, 0xb6, 0x96, 0x9f } }
 
 -- FIXME: check also the byte *after* occurences of 0xc3 (and keep the
@@ -59,7 +50,7 @@ local function column(s, sep, blind)
     line:gsub("[^@]+", function (m)
       local len = #m
       cc = cc + 1
-      if cc > cm then 
+      if cc > cm then
         x[cc] = 0
         cm = cc
       end
@@ -152,7 +143,7 @@ function Link(s, src, title)
 end
 
 function Image(s, src, title)
-  return enclose('img', s, src)
+  return enclose('img', src)
 end
 
 function CaptionedImage(src, attr, title)
@@ -160,7 +151,7 @@ function CaptionedImage(src, attr, title)
 end
 
 function Code(s, attr)
-  return string.format("[code]%s[/code]", s)
+  return enclose('b', enclose('color', s, '#FF0000'))
 end
 
 function InlineMath(s)
@@ -185,7 +176,7 @@ function Plain(s)
 end
 
 function Para(s)
-  return s
+  return s .. '\n'
 end
 
 function Header(level, s, attr)
@@ -199,9 +190,13 @@ function Header(level, s, attr)
 end
 
 function BlockQuote(s)
-  local a, t = s:match('@([%w]+): (.+)')
+  local a, t = s:match('@([%w]+):?(.+)')
   if a then
-    return enclose('quote', t or "Unknown" , '"' .. a .. '"')
+    t = t:gsub('^[ \n]+', '')
+    if a == 'spoiler' then
+      return enclose('spoiler', t)
+    end
+    return enclose('quote', t, '"' .. a .. '"')
   else
     return enclose('quote', s)
   end
@@ -212,11 +207,11 @@ function Cite(s)
 end
 
 function Blocksep(s)
-  return "\n\n"
+  return '\n'
 end
 
 function HorizontalRule(s)
-  return '--'
+  return string.rep('-', 80) .. '\n'
 end
 
 function CodeBlock(s, attr)
@@ -226,7 +221,7 @@ end
 local function makelist(items, ltype)
   local buf = ltype and string.format("[list=%s]", ltype) or "[list]"
   for _,e in ipairs(items) do
-    buf = buf .. enclose('*', e) .. '\n'
+    buf = buf .. '[*]' .. e .. '\n'
   end
   buf = buf .. '[/list]'
   return buf
