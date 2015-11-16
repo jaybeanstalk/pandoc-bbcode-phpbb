@@ -131,7 +131,7 @@ function Plain(s)
 end
 
 function Para(s)
-  return s .. '\n\n'
+  return s .. '\n'
 end
 
 function Header(level, s, attr)
@@ -150,11 +150,11 @@ function BlockQuote(s)
   if a then
     t = t:gsub('^[ \n]+', '')
     if a == 'spoiler' then
-      return enclose('spoiler', t) .. '\n'
+      return enclose('spoiler', t)
     end
-    return enclose('quote', t, '"' .. a .. '"') .. '\n'
+    return enclose('quote', t, '"' .. a .. '"')
   else
-    return enclose('quote', s) .. '\n'
+    return enclose('quote', s)
   end
 end
 
@@ -163,15 +163,15 @@ function Cite(s)
 end
 
 function Blocksep(s)
-  return ''
+  return '\n'
 end
 
 function HorizontalRule(s)
-  return string.rep('-', 80) .. '\n\n'
+  return string.rep('-', 80) .. '\n'
 end
 
 function CodeBlock(s, attr)
-  return enclose('code', s) .. '\n'
+  return enclose('code', s)
 end
 
 local function makelist(items, ltype)
@@ -179,7 +179,7 @@ local function makelist(items, ltype)
   for _, e in ipairs(items) do
     buf = buf .. '[*]' .. rstrip(e)
   end
-  return enclose('list', buf, ltype) .. '\n\n'
+  return enclose('list', buf, ltype) .. '\n'
 end
 
 function BulletList(items)
@@ -275,7 +275,7 @@ function Table(cap, align, widths, headers, rows)
   end
   buf = buf .. hrule()
 
-  return enclose('code', buf) .. '\n'
+  return enclose('code', buf)
 end
 
 function Div(s, attr)
@@ -284,6 +284,14 @@ end
 
 function RawInline(format, s)
   return ''
+end
+
+function SingleQuoted(lst)
+  return '‘' .. lst .. '’'
+end
+
+function DoubleQuoted(lst)
+  return '“' .. lst .. '”'
 end
 
 -- boilerplate
