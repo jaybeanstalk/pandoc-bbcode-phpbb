@@ -1,2 +1,2 @@
-README.bbcode: README.mkd panbbcode.lua
-	pandoc -f markdown+pipe_tables -t panbbcode.lua -o $@ --smart $<
+README.bbcode: README.md pandoc-bbcode-phpbb.lua
+	pandoc -f markdown+pipe_tables -t pandoc-bbcode-phpbb.lua -o $@ --smart $<
