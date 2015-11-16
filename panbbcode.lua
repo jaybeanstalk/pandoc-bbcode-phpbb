@@ -7,99 +7,54 @@
 
 local function enclose(t, s, p)
   if p then
-    return string.format("[%s=%s]%s[/%s]", t, p, s, t)
+    return string.format('[%s=%s]%s[/%s]', t, p, s, t)
   else
-    return string.format("[%s]%s[/%s]", t, s, t)
+    return string.format('[%s]%s[/%s]', t, s, t)
   end
 end
 
-local strlen_ger_utf8_t = { [0xc3] = { 0xa4, 0x84, 0xbc, 0x9c, 0xb6, 0x96, 0x9f } }
-
--- FIXME: check also the byte *after* occurences of 0xc3 (and keep the
--- loop for that)
-local function strlen_ger_utf8(w)
-  local s = {}
-  local len = 0
-  w:gsub("(.)", function (c)
-    table.insert(s, c:byte())
-  end)
-  for i=1,#s do
-    if strlen_ger_utf8_t[s[i]] then
-      i = i + 1
-    else
-      len = len + 1
-    end
-  end
-  return len
+local function rstrip(s)
+  local t, _ = s:gsub('\n+$', '')
+  return t
 end
 
-local function column(s, sep, blind)
-  local s = s
-  local sep = sep or "   "
-  local blind = blind or ""
-  local ret = ""
+local function strlen_utf8(s)
+  local _, count = s:gsub('[^\128-\193]', '')
+  return count
+end
 
-  local y = {}
-  local x = {}
-  local cm = 0
-  local i = 0
+local function each_line(s)
+  if s:sub(-1) ~= '\n' then
+    s = s .. '\n'
+  end
+  return s:gmatch('(.-)\n')
+end
 
-  for line in s:gmatch("[^\r\n]+") do
-    local ly = {}
-    local cc = 0
-    line:gsub("[^@]+", function (m)
-      local len = #m
-      cc = cc + 1
-      if cc > cm then
-        x[cc] = 0
-        cm = cc
-      end
-      if len > x[cc] then
-        x[cc] = len
-      end
-      table.insert(ly, m)
-    end)
-    table.insert(y, ly)
-  end
-  for _,line in ipairs(y) do
-    for tmp=1,(#x-#line) do
-        table.insert(line, blind)
+local function strsize(s)
+  local w, h = 0, 0
+  for line in each_line(s) do
+    local lw = strlen_utf8(line)
+    if w < lw then
+      w = lw
     end
-    for i,word in ipairs(line) do
-      -- workaround for common German utf-8 umlauts
-      local wl = word:match("[öäüÖÄÜß]") and strlen_ger_utf8(word) or #word
-      if wl < x[i] then
-        for tmp=1,(x[i]-wl) do
-          word = word .. " "
-        end
-      end
-     ret = ret .. word .. sep
-    end
-    ret = ret .. '\n'
+    h = h + 1
   end
-  return ret
+  return w, h
 end
 
 -- PUBLIC
 
-local cache_notes = {}
+local notes = {}
 
-function Doc( body, meta, vars )
-  local buf = {}
-  local function _(e)
-    table.insert(buf, e)
-  end
-  if meta['title'] and meta['title'] ~= "" then
-    _(meta['title'])
-  end
-  _(body)
-  if #cache_notes > 0 then
-    _("--")
-    for i,n in ipairs(cache_notes) do
-      _(string.format("[%d] %s", i, n))
+function Doc(body, meta, vars)
+  local buf = rstrip(body)
+  if #notes > 0 then
+    buf = buf .. '\n\n' .. string.rep('-', 80) .. '\n'
+    for i, n in ipairs(notes) do
+      buf = buf .. string.format('\n[%d] %s', i, n)
     end
   end
-  return table.concat(buf, '\n')
+  return buf
 end
 
 function Str(s)
@@ -123,11 +78,11 @@ function Strong(s)
 end
 
 function Subscript(s)
-  return string.format("{%s}", s)
+  return enclose('size', s, '70')
 end
 
 function Superscript(s)
-  return string.format("[%s]", s)
+  return '^' .. s
 end
 
 function SmallCaps(s)
@@ -151,7 +106,7 @@ function CaptionedImage(src, attr, title)
 end
 
 function Code(s, attr)
-  return enclose('b', enclose('color', s, '#FF0000'))
+  return enclose('u', s)
 end
 
 function InlineMath(s)
@@ -163,8 +118,8 @@ function DisplayMath(s)
 end
 
 function Note(s)
-  table.insert(cache_notes, s)
-  return string.format("[%d]", #cache_notes)
+  table.insert(notes, s)
+  return string.format('[%d]', #notes)
 end
 
 function Span(s, attr)
@@ -176,29 +131,30 @@ function Plain(s)
 end
 
 function Para(s)
-  return s .. '\n'
+  return s .. '\n\n'
 end
 
 function Header(level, s, attr)
   if level == 1 then
-    return enclose('size', s, '160')
+    return enclose('size', s, '160') .. '\n'
   elseif level == 2 then
-    return enclose('b', enclose('size', s, '135'))
+    return enclose('b', enclose('size', s, '135')) .. '\n'
   else
-    return enclose('b', enclose('size', s, '115'))
+    return enclose('b', enclose('size', s, '115')) .. '\n'
   end
 end
 
 function BlockQuote(s)
+  s = rstrip(s)
   local a, t = s:match('@([%w]+):?(.+)')
   if a then
     t = t:gsub('^[ \n]+', '')
     if a == 'spoiler' then
-      return enclose('spoiler', t)
+      return enclose('spoiler', t) .. '\n'
     end
-    return enclose('quote', t, '"' .. a .. '"')
+    return enclose('quote', t, '"' .. a .. '"') .. '\n'
   else
-    return enclose('quote', s)
+    return enclose('quote', s) .. '\n'
   end
 end
 
@@ -207,24 +163,23 @@ function Cite(s)
 end
 
 function Blocksep(s)
-  return '\n'
+  return ''
 end
 
 function HorizontalRule(s)
-  return string.rep('-', 80) .. '\n'
+  return string.rep('-', 80) .. '\n\n'
 end
 
 function CodeBlock(s, attr)
-  return enclose('code', s)
+  return enclose('code', s) .. '\n'
 end
 
 local function makelist(items, ltype)
-  local buf = ltype and string.format("[list=%s]", ltype) or "[list]"
-  for _,e in ipairs(items) do
-    buf = buf .. '[*]' .. e .. '\n'
+  local buf = ''
+  for _, e in ipairs(items) do
+    buf = buf .. '[*]' .. rstrip(e)
   end
-  buf = buf .. '[/list]'
-  return buf
+  return enclose('list', buf, ltype) .. '\n\n'
 end
 
 function BulletList(items)
@@ -236,7 +191,7 @@ function OrderedList(items)
 end
 
 function DefinitionList(items)
-  local buf = ""
+  local buf = ''
   local function mkdef(k,v)
     return string.format("%s: %s\n", enclose('b', k), v)
   end
@@ -248,29 +203,87 @@ function DefinitionList(items)
   return buf
 end
 
-function html_align(align)
-  return ""
-end
-
 function Table(cap, align, widths, headers, rows)
-  local buf = {}
-  for _,r in ipairs(rows) do
-    local rbuf = ""
-    for i,c in ipairs(r) do
-      if i~=#r then
-        rbuf = rbuf .. c .. '@'
-      else
-        rbuf = rbuf .. c
+  -- Determine the width of each column
+  local charw = {}
+  local charh = {}
+  charh[0] = 0
+  for i, s in ipairs(headers) do
+    local w, h = strsize(s)
+    if charh[0] < h then
+      charh[0] = h
+    end
+    charw[i] = w
+  end
+  for j, row in ipairs(rows) do
+    charh[j] = 0
+    for i, s in ipairs(row) do
+      local w, h = strsize(s)
+      if charw[i] < w then
+        charw[i] = w
+      end
+      if charh[j] < h then
+        charh[j] = h
       end
     end
-    table.insert(buf, rbuf)
   end
-  local cin = table.concat(buf, '\n')
-  return enclose('code', column(cin))
+
+  -- Closures
+  local function align_str(s, w, align)
+    local diff = w - strlen_utf8(s)
+    if align == 'AlignCenter' then
+      local left = math.floor(diff / 2)
+      local right = diff - left
+      return string.rep(' ', left) .. s .. string.rep(' ', right)
+    elseif align == 'AlignRight' then
+      return string.rep(' ', diff) .. s
+    else
+      return s .. string.rep(' ', diff)
+    end
+  end
+
+  local function hrule()
+    local buf = '+'
+    for _, w in ipairs(charw) do
+      buf = buf .. string.rep('-', w + 2) .. '+'
+    end
+    return buf
+  end
+
+  local function row(row, h)
+    local buf = {}
+    for i = 1, h do
+      buf[i] = '|'
+    end
+    for i, s in ipairs(row) do
+      local w = charw[i]
+      local j = 1
+      for line in each_line(s) do
+        buf[j] = buf[j] .. ' ' .. align_str(line, w, align[i]) .. ' |'
+        j = j + 1
+      end
+    end
+    return table.concat(buf, '\n')
+  end
+
+  -- Construct table
+  local buf = hrule() .. '\n'
+  buf = buf .. row(headers, charh[0]) .. '\n'
+  buf = buf .. hrule() .. '\n'
+  for i, r in ipairs(rows) do
+    buf = buf .. row(r, charh[i]) .. '\n'
+  end
+  buf = buf .. hrule()
+
+  return enclose('code', buf) .. '\n'
 end
 
 function Div(s, attr)
   return s
+end
+
+function RawInline(format, s)
+  return ''
 end
 
 -- boilerplate
