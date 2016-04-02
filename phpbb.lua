@@ -294,6 +294,10 @@ function DoubleQuoted(lst)
   return '“' .. lst .. '”'
 end
 
+function SoftBreak()
+  return ''
+end
+
 -- boilerplate
 
 local meta = {}
