@@ -140,7 +140,7 @@ function Header(level, s, attr)
   elseif level == 2 then
     return enclose('b', enclose('size', s, '180')) .. '\n'
   else
-    return enclose('b', enclose('size', s, '140')) .. '\n'
+    return enclose('b', enclose('center', s)) .. '\n'
   end
 end
 
