@@ -152,9 +152,9 @@ function BlockQuote(s)
     if a == 'spoiler' then
       return enclose('spoiler', t)
     end
-    return enclose('quote', t, '"' .. a .. '"')
+    return enclose('box', t, '"' .. a .. '"')
   else
-    return enclose('quote', s)
+    return enclose('box', s)
   end
 end
 
@@ -171,7 +171,7 @@ function HorizontalRule(s)
 end
 
 function CodeBlock(s, attr)
-  return enclose('code', s)
+  return enclose('pre', s)
 end
 
 local function makelist(items, ltype)
